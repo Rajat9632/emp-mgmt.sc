@@ -24,37 +24,45 @@
             <p class="text-lg text-gray-600 mt-2">Visualizing key metrics from the employee database.</p>
         </header>
 
-        <!-- Chart Container -->
-        <main class="max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-gray-200">
-            <h2 class="text-2xl font-semibold mb-6 text-center">Employees per Department</h2>
-            <div id="loading-message" class="text-center text-gray-500">
-                <p>Loading chart data...</p>
-            </div>
-            <div id="error-message" class="hidden text-center text-red-500 bg-red-100 p-4 rounded-lg">
-                <p><strong>Error:</strong> Could not fetch chart data.</p>
-                <p class="mt-2 text-sm">Please ensure you have a valid authentication token and the server is running.</p>
-            </div>
-            <!-- Canvas where the chart will be rendered -->
-            <div class="relative h-96 w-full">
-                 <canvas id="departmentPieChart"></canvas>
-            </div>
-        </main>
+        <!-- Charts Container -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
+            <!-- Department Chart -->
+            <main class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-gray-200">
+                <h2 class="text-2xl font-semibold mb-6 text-center">Employees per Department</h2>
+                <div id="loading-message-dept" class="text-center text-gray-500">
+                    <p>Loading chart data...</p>
+                </div>
+                <div id="error-message-dept" class="hidden text-center text-red-500 bg-red-100 p-4 rounded-lg">
+                    <p><strong>Error:</strong> Could not fetch chart data.</p>
+                    <p class="mt-2 text-sm">Please ensure you have a valid authentication token and the server is running.</p>
+                </div>
+                <div class="relative h-96 w-full">
+                    <canvas id="departmentPieChart"></canvas>
+                </div>
+            </main>
+
+            <!-- Attendance Chart -->
+            <main class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-gray-200">
+                <h2 class="text-2xl font-semibold mb-6 text-center">Attendance Overview</h2>
+                <div id="loading-message-att" class="text-center text-gray-500">
+                    <p>Loading attendance data...</p>
+                </div>
+                <div id="error-message-att" class="hidden text-center text-red-500 bg-red-100 p-4 rounded-lg">
+                    <p><strong>Error:</strong> Could not fetch attendance data.</p>
+                    <p class="mt-2 text-sm">Please ensure you have a valid authentication token and the server is running.</p>
+                </div>
+                <div class="relative h-96 w-full">
+                    <canvas id="attendanceBarChart"></canvas>
+                </div>
+            </main>
+        </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // --- IMPORTANT ---
             // You must get an authentication token to access the API.
-            // 1. Create a superuser: `python manage.py createsuperuser`
-            // 2. Run the server and go to the admin panel (`/admin/`)
-            // 3. Go to "Auth Tokens" and add a token for your user.
-            // 4. Copy the generated token key and paste it here.
             const authToken = '90cb5ca9afb9b1942619872cea5e5f89ff7c9290'; // <-- PASTE YOUR TOKEN HERE
-
-            const loadingMessage = document.getElementById('loading-message');
-            const errorMessage = document.getElementById('error-message');
-            const chartCanvas = document.getElementById('departmentPieChart');
-            const chartContext = chartCanvas.getContext('2d');
 
             // Function to generate random, visually appealing colors
             const generateColors = (numColors) => {
@@ -66,22 +74,18 @@
                 return colors;
             };
 
-            // Fetch data from the analytics API endpoint
-            const fetchChartData = async () => {
-                // Check if a placeholder token is still being used
-                if (authToken === 'YOUR_AUTH_TOKEN_HERE') {
-                    errorMessage.querySelector('p.mt-2').innerHTML = 'Please replace "YOUR_AUTH_TOKEN_HERE" in the script with a valid token.';
-                    errorMessage.classList.remove('hidden');
-                    loadingMessage.classList.add('hidden');
-                    return;
-                }
+            // Fetch department data
+            const fetchDepartmentData = async () => {
+                const loadingMessage = document.getElementById('loading-message-dept');
+                const errorMessage = document.getElementById('error-message-dept');
+                const chartCanvas = document.getElementById('departmentPieChart');
+                const chartContext = chartCanvas.getContext('2d');
 
                 try {
                     const response = await fetch('/api/analytics/employees-per-department/', {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
-                            // Include the token in the Authorization header
                             'Authorization': `Token ${authToken}`
                         }
                     });
@@ -91,16 +95,13 @@
                     }
 
                     const data = await response.json();
-
                     loadingMessage.classList.add('hidden');
 
                     if (data && data.length > 0) {
-                        // Process data for Chart.js
                         const labels = data.map(item => item.name);
                         const counts = data.map(item => item.employee_count);
                         const backgroundColors = generateColors(labels.length);
 
-                        // Create the pie chart
                         new Chart(chartContext, {
                             type: 'pie',
                             data: {
@@ -125,26 +126,93 @@
                                                 size: 14
                                             }
                                         }
-                                    },
-                                    title: {
-                                        display: false, // Title is already in the HTML
                                     }
                                 }
                             }
                         });
                     } else {
-                        // Handle case where API returns no data
                         loadingMessage.innerText = 'No department data found to display.';
                     }
 
                 } catch (error) {
-                    console.error('Failed to fetch chart data:', error);
+                    console.error('Failed to fetch department data:', error);
                     loadingMessage.classList.add('hidden');
                     errorMessage.classList.remove('hidden');
                 }
             };
 
-            fetchChartData();
+            // Fetch attendance data
+            const fetchAttendanceData = async () => {
+                const loadingMessage = document.getElementById('loading-message-att');
+                const errorMessage = document.getElementById('error-message-att');
+                const chartCanvas = document.getElementById('attendanceBarChart');
+                const chartContext = chartCanvas.getContext('2d');
+
+                try {
+                    // Mock attendance data for demonstration
+                    const attendanceData = {
+                        'Present': 120,
+                        'Absent': 25,
+                        'Late': 15
+                    };
+
+                    loadingMessage.classList.add('hidden');
+
+                    if (attendanceData && Object.keys(attendanceData).length > 0) {
+                        const labels = Object.keys(attendanceData);
+                        const counts = Object.values(attendanceData);
+
+                        new Chart(chartContext, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Number of Records',
+                                    data: counts,
+                                    backgroundColor: [
+                                        'rgba(34, 197, 94, 0.8)',   // Green for Present
+                                        'rgba(239, 68, 68, 0.8)',   // Red for Absent
+                                        'rgba(251, 191, 36, 0.8)'   // Yellow for Late
+                                    ],
+                                    borderColor: [
+                                        'rgba(34, 197, 94, 1)',
+                                        'rgba(239, 68, 68, 1)',
+                                        'rgba(251, 191, 36, 1)'
+                                    ],
+                                    borderWidth: 2
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                            precision: 0
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        loadingMessage.innerText = 'No attendance data found to display.';
+                    }
+
+                } catch (error) {
+                    console.error('Failed to fetch attendance data:', error);
+                    loadingMessage.classList.add('hidden');
+                    errorMessage.classList.remove('hidden');
+                }
+            };
+
+            fetchDepartmentData();
+            fetchAttendanceData();
         });
     </script>
 
