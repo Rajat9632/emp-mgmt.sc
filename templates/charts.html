@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Analytics</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto px-4 py-8 md:py-12">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-gray-900">Employee Analytics Dashboard</h1>
+            <p class="text-lg text-gray-600 mt-2">Visualizing key metrics from the employee database.</p>
+        </header>
+
+        <!-- Chart Container -->
+        <main class="max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-gray-200">
+            <h2 class="text-2xl font-semibold mb-6 text-center">Employees per Department</h2>
+            <div id="loading-message" class="text-center text-gray-500">
+                <p>Loading chart data...</p>
+            </div>
+            <div id="error-message" class="hidden text-center text-red-500 bg-red-100 p-4 rounded-lg">
+                <p><strong>Error:</strong> Could not fetch chart data.</p>
+                <p class="mt-2 text-sm">Please ensure you have a valid authentication token and the server is running.</p>
+            </div>
+            <!-- Canvas where the chart will be rendered -->
+            <div class="relative h-96 w-full">
+                 <canvas id="departmentPieChart"></canvas>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- IMPORTANT ---
+            // You must get an authentication token to access the API.
+            // 1. Create a superuser: `python manage.py createsuperuser`
+            // 2. Run the server and go to the admin panel (`/admin/`)
+            // 3. Go to "Auth Tokens" and add a token for your user.
+            // 4. Copy the generated token key and paste it here.
+            const authToken = '90cb5ca9afb9b1942619872cea5e5f89ff7c9290'; // <-- PASTE YOUR TOKEN HERE
+
+            const loadingMessage = document.getElementById('loading-message');
+            const errorMessage = document.getElementById('error-message');
+            const chartCanvas = document.getElementById('departmentPieChart');
+            const chartContext = chartCanvas.getContext('2d');
+
+            // Function to generate random, visually appealing colors
+            const generateColors = (numColors) => {
+                const colors = [];
+                for (let i = 0; i < numColors; i++) {
+                    const hue = (i * 360) / numColors;
+                    colors.push(`hsl(${hue}, 75%, 60%)`);
+                }
+                return colors;
+            };
+
+            // Fetch data from the analytics API endpoint
+            const fetchChartData = async () => {
+                // Check if a placeholder token is still being used
+                if (authToken === 'YOUR_AUTH_TOKEN_HERE') {
+                    errorMessage.querySelector('p.mt-2').innerHTML = 'Please replace "YOUR_AUTH_TOKEN_HERE" in the script with a valid token.';
+                    errorMessage.classList.remove('hidden');
+                    loadingMessage.classList.add('hidden');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/analytics/employees-per-department/', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            // Include the token in the Authorization header
+                            'Authorization': `Token ${authToken}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    loadingMessage.classList.add('hidden');
+
+                    if (data && data.length > 0) {
+                        // Process data for Chart.js
+                        const labels = data.map(item => item.name);
+                        const counts = data.map(item => item.employee_count);
+                        const backgroundColors = generateColors(labels.length);
+
+                        // Create the pie chart
+                        new Chart(chartContext, {
+                            type: 'pie',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Number of Employees',
+                                    data: counts,
+                                    backgroundColor: backgroundColors,
+                                    borderColor: '#ffffff',
+                                    borderWidth: 2,
+                                    hoverOffset: 4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'top',
+                                        labels: {
+                                            font: {
+                                                size: 14
+                                            }
+                                        }
+                                    },
+                                    title: {
+                                        display: false, // Title is already in the HTML
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        // Handle case where API returns no data
+                        loadingMessage.innerText = 'No department data found to display.';
+                    }
+
+                } catch (error) {
+                    console.error('Failed to fetch chart data:', error);
+                    loadingMessage.classList.add('hidden');
+                    errorMessage.classList.remove('hidden');
+                }
+            };
+
+            fetchChartData();
+        });
+    </script>
+
+</body>
+</html>
