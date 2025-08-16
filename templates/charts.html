@@ -41,18 +41,33 @@
                 </div>
             </main>
 
-            <!-- Attendance Chart -->
+            <!-- Overall Attendance Chart -->
             <main class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-gray-200">
-                <h2 class="text-2xl font-semibold mb-6 text-center">Attendance Overview</h2>
-                <div id="loading-message-att" class="text-center text-gray-500">
+                <h2 class="text-2xl font-semibold mb-6 text-center">Overall Attendance</h2>
+                <div id="loading-message-overall" class="text-center text-gray-500">
                     <p>Loading attendance data...</p>
                 </div>
-                <div id="error-message-att" class="hidden text-center text-red-500 bg-red-100 p-4 rounded-lg">
+                <div id="error-message-overall" class="hidden text-center text-red-500 bg-red-100 p-4 rounded-lg">
                     <p><strong>Error:</strong> Could not fetch attendance data.</p>
                     <p class="mt-2 text-sm">Please ensure you have a valid authentication token and the server is running.</p>
                 </div>
                 <div class="relative h-96 w-full">
-                    <canvas id="attendanceBarChart"></canvas>
+                    <canvas id="overallBarChart"></canvas>
+                </div>
+            </main>
+
+            <!-- Today's Attendance Chart -->
+            <main class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border border-gray-200 lg:col-span-2">
+                <h2 class="text-2xl font-semibold mb-6 text-center">Today's Attendance</h2>
+                <div id="loading-message-today" class="text-center text-gray-500">
+                    <p>Loading today's attendance data...</p>
+                </div>
+                <div id="error-message-today" class="hidden text-center text-red-500 bg-red-100 p-4 rounded-lg">
+                    <p><strong>Error:</strong> Could not fetch today's attendance data.</p>
+                    <p class="mt-2 text-sm">Please ensure you have a valid authentication token and the server is running.</p>
+                </div>
+                <div class="relative h-96 w-full">
+                    <canvas id="todayBarChart"></canvas>
                 </div>
             </main>
         </div>
@@ -62,7 +77,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             // --- IMPORTANT ---
             // You must get an authentication token to access the API.
-            const authToken = '90cb5ca9afb9b1942619872cea5e5f89ff7c9290'; // <-- PASTE YOUR TOKEN HERE
+            const authToken = '90cb5ca9afb9b1942619872cea5e5f89ff7c9290';
 
             // Function to generate random, visually appealing colors
             const generateColors = (numColors) => {
@@ -143,26 +158,37 @@
 
             // Fetch attendance data
             const fetchAttendanceData = async () => {
-                const loadingMessage = document.getElementById('loading-message-att');
-                const errorMessage = document.getElementById('error-message-att');
-                const chartCanvas = document.getElementById('attendanceBarChart');
-                const chartContext = chartCanvas.getContext('2d');
+                const loadingOverall = document.getElementById('loading-message-overall');
+                const loadingToday = document.getElementById('loading-message-today');
+                const errorOverall = document.getElementById('error-message-overall');
+                const errorToday = document.getElementById('error-message-today');
+                const overallChart = document.getElementById('overallBarChart');
+                const todayChart = document.getElementById('todayBarChart');
+                const overallContext = overallChart.getContext('2d');
+                const todayContext = todayChart.getContext('2d');
 
                 try {
-                    // Mock attendance data for demonstration
-                    const attendanceData = {
-                        'Present': 120,
-                        'Absent': 25,
-                        'Late': 15
-                    };
+                    const response = await fetch('/api/analytics/attendance-summary/', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Token ${authToken}`
+                        }
+                    });
 
-                    loadingMessage.classList.add('hidden');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
 
-                    if (attendanceData && Object.keys(attendanceData).length > 0) {
-                        const labels = Object.keys(attendanceData);
-                        const counts = Object.values(attendanceData);
+                    const data = await response.json();
+                    
+                    // Overall attendance
+                    loadingOverall.classList.add('hidden');
+                    if (data.overall && Object.keys(data.overall).length > 0) {
+                        const labels = Object.keys(data.overall);
+                        const counts = Object.values(data.overall);
 
-                        new Chart(chartContext, {
+                        new Chart(overallContext, {
                             type: 'bar',
                             data: {
                                 labels: labels,
@@ -201,13 +227,63 @@
                             }
                         });
                     } else {
-                        loadingMessage.innerText = 'No attendance data found to display.';
+                        loadingOverall.innerText = 'No attendance data found to display.';
+                    }
+
+                    // Today's attendance
+                    loadingToday.classList.add('hidden');
+                    if (data.today && Object.keys(data.today).length > 0) {
+                        const labels = Object.keys(data.today);
+                        const counts = Object.values(data.today);
+
+                        new Chart(todayContext, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: "Today's Records",
+                                    data: counts,
+                                    backgroundColor: [
+                                        'rgba(34, 197, 94, 0.8)',   // Green for Present
+                                        'rgba(239, 68, 68, 0.8)',   // Red for Absent
+                                        'rgba(251, 191, 36, 0.8)'   // Yellow for Late
+                                    ],
+                                    borderColor: [
+                                        'rgba(34, 197, 94, 1)',
+                                        'rgba(239, 68, 68, 1)',
+                                        'rgba(251, 191, 36, 1)'
+                                    ],
+                                    borderWidth: 2
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                            precision: 0
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        loadingToday.innerText = 'No attendance data found for today.';
                     }
 
                 } catch (error) {
                     console.error('Failed to fetch attendance data:', error);
-                    loadingMessage.classList.add('hidden');
-                    errorMessage.classList.remove('hidden');
+                    loadingOverall.classList.add('hidden');
+                    loadingToday.classList.add('hidden');
+                    errorOverall.classList.remove('hidden');
+                    errorToday.classList.remove('hidden');
                 }
             };
 

@@ -9,6 +9,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Department, Employee, Performance
 from .serializers import DepartmentSerializer, EmployeeSerializer, PerformanceSerializer
+from attendance.models import Attendance
 
 # --- API ViewSets ---
 
@@ -38,13 +39,25 @@ def department_employee_count(request):
     data = Department.objects.annotate(employee_count=Count('employees')).values('name', 'employee_count')
     return Response(data)
 
-def charts_page_view(request):
+@api_view(['GET'])
+def attendance_summary(request):
     """
-    A view to render the HTML page that will contain our charts.
+    API endpoint that returns attendance summary statistics.
     """
-    return render(request, 'charts.html')
-
-from django.shortcuts import render
+    from datetime import date
+    
+    # Overall attendance summary
+    attendance_data = Attendance.objects.values('status').annotate(count=Count('id'))
+    summary = {item['status']: item['count'] for item in attendance_data}
+    
+    # Today's attendance summary
+    today_attendance = Attendance.objects.filter(date=date.today()).values('status').annotate(count=Count('id'))
+    today_summary = {item['status']: item['count'] for item in today_attendance}
+    
+    return Response({
+        'overall': summary,
+        'today': today_summary
+    })
 
 def charts_page_view(request):
     """
